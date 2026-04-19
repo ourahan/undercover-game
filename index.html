@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Undercover - Agent Secret</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Special+Elite&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #050505; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
+        .glass { background: rgba(15, 15, 15, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        
+        .paper-document {
+            background-color: #e2d1b3;
+            background-image: url('https://www.transparenttextures.com/patterns/purl-pullover.png');
+            color: #1a1a1a;
+            padding: 20px 15px; 
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            transform: rotate(-1deg); 
+            font-family: 'Special Elite', cursive;
+            border-bottom: 3px solid #be9b7b;
+            width: 95%;
+            max-width: 350px;
+            margin: 0 auto;
+        }
+
+        .stamp-red {
+            color: #b91c1c;
+            border: 3px solid #b91c1c;
+            padding: 3px 10px;
+            display: inline-block;
+            transform: rotate(-10deg);
+            font-weight: 900;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        #secret-word {
+            user-select: none;
+            transition: all 0.3s ease;
+            display: inline-block;
+            font-size: 2.2rem;
+            line-height: 1;
+        }
+
+        .text-gradient { background: linear-gradient(to bottom, #ffffff, #666666); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
+        @keyframes pop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        /* Fix pour le scroll de la modal */
+        #clue-list-full::-webkit-scrollbar { width: 4px; }
+        #clue-list-full::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body class="p-4 flex flex-col items-center min-h-screen bg-[radial-gradient(circle_at_center,#1a1a1a_0%,#050505_100%)]">
+
+    <div class="fixed top-6 left-6 z-50">
+        <button id="btn-leave-room" class="glass px-5 py-2 rounded-full text-[10px] font-black uppercase text-red-500 border border-red-500/20 hidden">Quitter</button>
+    </div>
+
+    <div id="screen-login" class="w-full max-w-sm mt-16 space-y-8 animate-pop">
+        <div class="text-center">
+            <div class="block text-4xl mb-4 opacity-40">🕶️</div> 
+            <h1 class="text-6xl font-black italic tracking-tighter uppercase text-gradient leading-none">Under<br>Cover</h1>
+            <p class="text-[9px] font-bold tracking-[0.4em] uppercase opacity-20 mt-3">Dossier Classifié - Surveillance</p>
+        </div>
+
+        <div class="glass p-8 rounded-[40px] space-y-4 shadow-2xl">
+            <input id="username" type="text" placeholder="NOM DE CODE" class="w-full p-5 rounded-2xl bg-white/5 border border-white/10 text-center text-xl font-bold outline-none uppercase text-white placeholder:opacity-10">
+            <div class="grid grid-cols-2 gap-3">
+                <button id="mode-create" class="bg-white/5 border border-white/10 py-4 rounded-2xl font-black text-[10px] uppercase">Créer</button>
+                <button id="mode-join" class="bg-white/5 border border-white/10 py-4 rounded-2xl font-black text-[10px] uppercase">Rejoindre</button>
+            </div>
+            <div id="area-create" class="hidden space-y-4 pt-4 border-t border-white/5">
+                <input id="new-roomid" type="text" placeholder="NOM DU SALON" class="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-center font-bold uppercase text-white">
+                <button id="btn-confirm-create" class="w-full bg-white text-black py-5 rounded-full font-black text-xl">OUVRIR SALON</button>
+            </div>
+            <div id="area-join" class="hidden space-y-4 pt-4 border-t border-white/5">
+                <input id="join-roomid" type="text" placeholder="CODE D'ACCÈS" class="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-center font-bold uppercase text-white">
+                <p id="error-msg" class="text-red-500 text-[10px] font-black uppercase mt-2 hidden text-center">Invalide</p>
+                <button id="btn-confirm-join" class="w-full mt-4 bg-white text-black py-5 rounded-full font-black text-xl">REJOINDRE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-lobby" class="hidden w-full max-w-sm mt-12 space-y-6 animate-pop">
+        <div class="glass p-8 rounded-[40px] text-center shadow-2xl">
+            <div class="text-3xl mb-4 opacity-30">🕶️</div>
+            <div id="display-room" class="text-[10px] font-mono text-cyan-400 font-black uppercase mb-4 bg-cyan-500/10 px-4 py-1 rounded-full border border-cyan-500/20 inline-block">---</div>
+            <button id="btn-invite-whatsapp" class="block mx-auto mb-6 text-[10px] text-green-400 font-black uppercase tracking-widest animate-pulse">INVITER VIA WHATSAPP</button>
+            <div id="player-list" class="space-y-3 mb-8"></div>
+            <button id="btn-ready" class="w-full bg-white text-black py-5 rounded-full font-black text-xl italic uppercase tracking-tighter">CONFIRMER</button>
+        </div>
+    </div>
+
+    <div id="screen-game" class="hidden w-full max-w-md space-y-4 animate-pop">
+        <div class="paper-document text-center">
+            <div class="stamp-red uppercase">Secret Défense</div>
+            <p class="text-[10px] uppercase opacity-60 mb-1 font-sans font-black">Ordre de Mission :</p>
+            <div id="secret-word" class="font-black tracking-tighter uppercase text-black/80">...</div>
+        </div> 
+
+        <div id="timer-display" class="text-cyan-400 font-black text-center text-xl mb-1 font-mono tracking-tighter"></div>
+        <div id="turn-indicator" class="py-2 text-center font-black text-[10px] uppercase text-cyan-400 tracking-widest">---</div>
+
+        <div class="glass p-4 rounded-[30px] border-white/5">
+            <div id="clue-list" class="space-y-2 max-h-48 overflow-y-auto mb-4 p-2"></div>
+            <div id="clue-box" class="hidden flex gap-2">
+                <input id="clue-input" type="text" placeholder="INDICE UNIQUE..." class="flex-1 p-4 rounded-xl bg-white/5 outline-none font-bold uppercase text-white text-sm border border-white/5">
+                <button id="btn-send-clue" class="bg-cyan-500 text-black px-6 rounded-xl font-black uppercase text-xs">OK</button>
+            </div>
+        </div>
+
+        <div id="vote-section" class="hidden glass p-6 rounded-[40px] border-2 border-red-500/10 text-center">
+            <button id="btn-open-indices" class="w-full mb-4 bg-white/10 border border-white/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest">🔎 Dossier des indices</button>
+            <h3 class="text-[10px] font-black uppercase text-cyan-400 mb-4 tracking-widest opacity-50 italic">Désigner l'infiltré</h3>
+            <div id="vote-list" class="flex flex-col gap-2 min-h-[50px]"></div>
+        </div>
+
+        <div id="result-section" class="hidden glass p-8 rounded-[45px] text-center animate-pop">
+            <h2 id="win-message" class="font-black text-4xl uppercase mb-6 italic tracking-tighter">...</h2>
+            <div id="final-reveal" class="mb-8"></div>
+            <button id="btn-replay" class="w-full bg-cyan-500 text-black py-5 rounded-full font-black text-xl hidden uppercase">Rejouer</button>
+            <p id="wait-host-msg" class="text-[10px] font-black uppercase opacity-20 py-4 hidden">Attente du commandant...</p>
+        </div>
+    </div>
+
+    <div id="modal-indices" class="fixed inset-0 z-[100] bg-black/95 hidden flex flex-col p-6 animate-pop">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="font-black italic text-xl uppercase tracking-tighter text-white">Archives de la session</h2>
+            <button id="btn-close-indices" class="bg-white/10 w-10 h-10 rounded-full font-bold text-white text-sm">X</button>
+        </div>
+        <div id="clue-list-full" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
+        <button id="btn-close-indices-bottom" class="mt-6 w-full bg-white text-black py-4 rounded-full font-black uppercase text-sm">Retour à l'interrogatoire</button>
+    </div>
+
+    <div id="screen-host-left" class="hidden w-full max-w-sm mt-32 text-center animate-pop">
+        <div class="glass p-12 rounded-[50px] space-y-6 border-red-500/20 shadow-2xl">
+            <div class="text-5xl grayscale opacity-50 mb-4">🕶️</div>
+            <h2 class="text-3xl font-black uppercase italic tracking-tighter text-white">Liaison coupée</h2>
+            <p class="text-white/30 text-[10px] font-bold uppercase tracking-widest">Le canal sécurisé a été fermé.</p>
+            <button onclick="location.reload()" class="w-full bg-white text-black py-4 rounded-full font-black text-[10px] uppercase tracking-widest">Retour au QG</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
