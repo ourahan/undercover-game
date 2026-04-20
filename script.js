@@ -2,7 +2,7 @@ const socket = io();
 let monPseudo = "", isHost = false;
 
 // --- AUDIO ---
-const bgMusic = new Audio('songame.mp3'); 
+const bgMusic = new Audio('music.mp3'); 
 bgMusic.loop = true; 
 bgMusic.volume = 0.2;
 const dropSfx = new Audio('https://assets.mixkit.co/active_storage/sfx/710/710-preview.mp3');
