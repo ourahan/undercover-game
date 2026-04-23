@@ -8,11 +8,10 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // Remplace tes lignes actuelles par celles-ci :
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
-    // On précise que le fichier est dans le dossier 'public'
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(__dirname + '/index.html');
 });
 
 let rooms = {};
