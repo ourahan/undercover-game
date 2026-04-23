@@ -49,12 +49,33 @@ document.getElementById('btn-leave-room').onclick = () => {
     location.reload(); 
 };
 
-document.getElementById('btn-ready').onclick = () => { 
+// --- BOUTON WHATSAPP (RESTAURÉ) ---
+document.getElementById('btn-invite-whatsapp').onclick = () => {
+    const roomName = socket.roomName || "MISSION SECRÈTE";
+    const msg = `CODE DE MISSION : ${roomName}\nPoint de ralliement : ${window.location.origin}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+};
+// --- BOUTON REJOUER (À RAJOUTER) ---
+document.getElementById('btn-replay').onclick = () => { 
     playClick(); 
-    socket.emit('set_ready'); 
+    console.log("Demande de redémarrage envoyée...");
+    socket.emit('restart_game'); 
 };
 
-// --- GESTION DE LA MODALE INDICES ---
+document.getElementById('btn-ready').onclick = () => { 
+    playClick(); 
+    if (isHost) {
+        const options = {
+            extraUndercover: document.getElementById('opt-extra-u').checked,
+            enableHacker: document.getElementById('opt-hacker').checked
+        };
+        socket.emit('set_ready', options); 
+    } else {
+        socket.emit('set_ready'); 
+    }
+};
+
+// --- MODALE INDICES ---
 const modalIndices = document.getElementById('modal-indices');
 document.getElementById('btn-open-indices').onclick = () => {
     playClick();
@@ -67,14 +88,13 @@ const fermerDossier = () => {
     playClick();
     modalIndices.classList.add('hidden');
 };
-document.getElementById('btn-close-indices').onclick = fermerDossier;
-document.getElementById('btn-close-indices-bottom').onclick = fermerDossier;
+if(document.getElementById('btn-close-indices')) document.getElementById('btn-close-indices').onclick = fermerDossier;
+if(document.getElementById('btn-close-indices-bottom')) document.getElementById('btn-close-indices-bottom').onclick = fermerDossier;
 
-// --- JEU : ACTIONS ---
+// --- ACTIONS JEU ---
 document.getElementById('btn-send-clue').onclick = () => {
     playClick();
     const input = document.getElementById('clue-input');
-    // Sécurité : Uniquement le premier mot
     const premierMot = input.value.trim().split(' ')[0].toUpperCase();
     if (premierMot) {
         socket.emit('send_clue', premierMot);
@@ -87,41 +107,18 @@ document.getElementById('btn-replay').onclick = () => {
     socket.emit('restart_game'); 
 };
 
-document.getElementById('btn-invite-whatsapp').onclick = () => {
-    const msg = `CODE DE MISSION : ${socket.roomName}\nPoint de ralliement : ${window.location.origin}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-};
-
 // --- SOCKET EVENTS ---
 socket.on('timer_update', (time) => {
     const timerEl = document.getElementById('timer-display');
+    const timerBar = document.getElementById('timer-bar');
     if(timerEl) {
         timerEl.innerText = `TEMPS RESTANT : ${time}s`;
         timerEl.style.color = time <= 10 ? "#ff4444" : "#22d3ee";
     }
-});
-
-socket.on('force_clue', (msg) => {
-    const cBox = document.getElementById('clue-box');
-    if (cBox && !cBox.classList.contains('hidden')) {
-        socket.emit('send_clue', msg);
-        document.getElementById('clue-input').value = "";
-    }
-});
-socket.on('force_vote', () => {
-    const vL = document.getElementById('vote-list');
-    // On vérifie si la section de vote est active et si l'agent n'a pas encore voté
-    const rapportEnvoye = vL.innerHTML.includes('Rapport envoyé');
-    const sectionVoteVisible = !document.getElementById('vote-section').classList.contains('hidden');
-
-    if (sectionVoteVisible && !rapportEnvoye) {
-        const buttons = vL.querySelectorAll('button');
-        if (buttons.length > 0) {
-            // Choix d'une cible au hasard
-            const randomBtn = buttons[Math.floor(Math.random() * buttons.length)];
-            playClick();
-            randomBtn.click(); // Simule le clic sur le bouton de vote
-        }
+    if(timerBar) {
+        const width = (time / 60) * 100;
+        timerBar.style.width = `${width}%`;
+        timerBar.style.backgroundColor = time <= 10 ? "#ff4444" : "#22d3ee";
     }
 });
 
@@ -154,9 +151,11 @@ socket.on('host_left_event', () => {
 // --- RENDER FUNCTIONS ---
 function showScreen(id) {
     ['screen-login', 'screen-lobby', 'screen-game', 'screen-host-left'].forEach(s => {
-        document.getElementById(s).classList.add('hidden');
+        const el = document.getElementById(s);
+        if(el) el.classList.add('hidden');
     });
-    document.getElementById(id).classList.remove('hidden');
+    const target = document.getElementById(id);
+    if(target) target.classList.remove('hidden');
 }
 
 function renderLobby(game) {
@@ -169,127 +168,172 @@ function renderLobby(game) {
         </div>
     `).join('');
     
-    // Correction ici : on cherche le joueur par son ID socket pour être sûr
+    const hostControls = document.getElementById('host-controls');
+    if (isHost && hostControls) {
+        hostControls.classList.remove('hidden');
+        const hRow = document.getElementById('hacker-toggle-row');
+        const hInp = document.getElementById('opt-hacker');
+        const uInp = document.getElementById('opt-extra-u');
+        const uRow = uInp.parentElement;
+
+        const canEnable = game.players.length >= 5;
+        if(hRow) hRow.style.opacity = canEnable ? "1" : "0.3";
+        if(uRow) uRow.style.opacity = canEnable ? "1" : "0.3";
+        if(hInp) hInp.disabled = !canEnable;
+        if(uInp) uInp.disabled = !canEnable;
+    }
+
     const moiInLobby = game.players.find(p => p.id === socket.id);
-    const btnReady = document.getElementById('btn-ready');
     if(moiInLobby) {
-        btnReady.innerText = moiInLobby.ready ? "ANNULER BRIEFING" : "CONFIRMER DISPONIBILITÉ";
+        document.getElementById('btn-ready').innerText = moiInLobby.ready ? "ANNULER BRIEFING" : "CONFIRMER DISPONIBILITÉ";
     }
 }
 
 function renderGame(game) {
-    const moi = game.players.find(p => p.nom === monPseudo || p.id === socket.id);
+    const moi = game.players.find(p => p.id === socket.id);
     if (!moi) return;
 
-    // Animation du mot secret
+    const ind = document.getElementById('turn-indicator');
+    const cBox = document.getElementById('clue-box');
+    const vSec = document.getElementById('vote-section');
+    const rSec = document.getElementById('result-section');
     const wordDisplay = document.getElementById('secret-word');
-    if (wordDisplay.innerText !== moi.mot) {
-        wordDisplay.innerText = moi.mot;
-        wordDisplay.classList.remove('animate-stamp');
-        void wordDisplay.offsetWidth;
-        wordDisplay.classList.add('animate-stamp');
+    const tapMsg = document.getElementById('tap-to-reveal');
+
+    // 1. MISE À JOUR DU MOT ET DU FLOU
+    if (wordDisplay) {
+        // Si le mot a changé (nouvelle partie), on remet le flou
+        if (wordDisplay.innerText !== moi.mot) {
+            wordDisplay.innerText = moi.mot;
+            wordDisplay.classList.add('blur-md'); 
+            if (tapMsg) tapMsg.classList.remove('hidden');
+            
+            // Petite animation de "tampon" quand le mot change
+            wordDisplay.classList.remove('animate-stamp');
+            void wordDisplay.offsetWidth; 
+            wordDisplay.classList.add('animate-stamp');
+        }
     }
-    
-    // Indices
-    const clueHTML = game.clues.map(c => `
+
+    // 2. INDICATEUR DE TOUR
+    ind.style.color = (moi.role === 'hacker') ? "#a855f7" : "#22d3ee";
+
+    // 3. LISTE DES INDICES
+    document.getElementById('clue-list').innerHTML = game.clues.map(c => `
         <div class="bg-white/5 p-3 rounded-xl border-l-2 mb-2 animate-pop" style="border-color:${c.color}">
             <div class="text-[8px] font-black opacity-30 uppercase">${c.auteur}</div>
             <div class="text-sm font-bold text-white uppercase font-mono">${c.texte}</div>
         </div>
     `).join('');
-    
-    document.getElementById('clue-list').innerHTML = clueHTML;
-    document.getElementById('clue-list').scrollTop = document.getElementById('clue-list').scrollHeight;
 
-    const ind = document.getElementById('turn-indicator');
-    const cBox = document.getElementById('clue-box');
-    const vSec = document.getElementById('vote-section');
-    const vL = document.getElementById('vote-list');
-    const rSec = document.getElementById('result-section');
-
-    // Reset visibilité
+    // 4. GESTION DES PHASES (On cache tout par défaut)
     [cBox, vSec, rSec].forEach(el => el.classList.add('hidden'));
-    ind.classList.remove('hidden');
 
-    if(game.phase.startsWith("indice")) {
-        const activePlayerId = game.turnOrder[game.tour];
-        const activePlayer = game.players.find(p => p.id === activePlayerId);
-
+    if (game.phase === "indice") {
+        const activePlayer = game.players.find(p => p.id === game.turnOrder[game.tour]);
         if (activePlayer) {
-            ind.style.color = activePlayer.color;
-            if(socket.id === activePlayerId) {
-                cBox.classList.remove('hidden');
-                ind.innerText = "À VOUS DE TRANSMETTRE L'INDICE";
-            } else {
-                ind.innerText = `ANALYSE : ${activePlayer.nom} TRANSMET...`;
-            }
+            ind.innerText = (socket.id === activePlayer.id) ? "À VOUS DE TRANSMETTRE L'INDICE" : `ANALYSE : ${activePlayer.nom} TRANSMET...`;
+            if (socket.id === activePlayer.id) cBox.classList.remove('hidden');
         }
     } 
-    else if(game.phase === "vote") {
-        ind.innerText = "ÉLIMINATION DE LA CIBLE";
+    else if (game.phase === "vote") {
         vSec.classList.remove('hidden');
+        ind.innerText = "ÉLIMINATION DE LA CIBLE";
+        const vL = document.getElementById('vote-list');
         
-        // On vérifie si l'utilisateur local a déjà voté
-        const jAiVote = game.votes[monPseudo] || game.votes[moi.nom];
-
-        if(jAiVote) {
-            vL.innerHTML = "<div class='py-8 opacity-20 font-black uppercase text-[10px] tracking-widest text-center animate-pulse'>Rapport envoyé. Attente des autres agents...</div>";
+        if (game.votes[moi.nom]) {
+            vL.innerHTML = "<div class='py-8 opacity-20 font-black text-center'>Rapport envoyé. Attente...</div>";
         } else {
-            vL.innerHTML = ""; 
+            vL.innerHTML = "";
             game.players.forEach(p => {
-                // On affiche tous les joueurs SAUF l'utilisateur local (celui qui regarde l'écran)
-                if (p.id !== socket.id && p.nom !== moi.nom) {
+                if (p.id !== socket.id) {
                     const btn = document.createElement('button');
-                    btn.className = "glass p-4 rounded-xl border border-white/10 font-black mb-2 w-full text-white active:scale-95 transition-all uppercase text-[10px] tracking-widest";
+                    btn.className = "glass p-4 rounded-xl border border-white/10 font-black mb-2 w-full text-white active:scale-95 transition-all";
                     btn.innerHTML = `<span style="color:${p.color}">${p.nom}</span>`;
-                    btn.onclick = () => {
-                        playClick();
-                        socket.emit('vote_player', p.nom);
-                    };
+                    btn.onclick = () => { playClick(); socket.emit('vote_player', p.nom); };
                     vL.appendChild(btn);
                 }
             });
         }
-    
     } 
-    else if(game.phase === "resultats") {
-        rSec.classList.remove('hidden'); 
-        ind.classList.add('hidden');
-        const res = calculateFinal(game);
-        const winMsg = document.getElementById('win-message');
-        winMsg.innerText = res.win ? "SUCCÈS DE L'AGENCE" : "ÉCHEC DE LA MISSION";
-        winMsg.style.color = res.win ? "#4ade80" : "#ef4444";
-        
-        document.getElementById('final-reveal').innerHTML = `
-            <div class='bg-white/5 p-8 rounded-[35px] font-black uppercase text-xs border border-white/5'>
-                <p class='opacity-20 mb-2'>L'infiltré était</p>
-                <span class='text-xl tracking-tighter'>${res.uNom}</span><br>
-                <p class='opacity-30 mt-4'>${res.uWord} VS ${res.cWord}</p>
-            </div>`;
-        
-        if(isHost) {
-            document.getElementById('btn-replay').classList.remove('hidden');
-            document.getElementById('wait-host-msg').classList.add('hidden');
-        } else {
-            document.getElementById('btn-replay').classList.add('hidden');
-            document.getElementById('wait-host-msg').classList.remove('hidden');
+    else if (game.phase === "resultats") {
+        // Appelle ta fonction d'affichage ou remplis le rSec ici
+        ind.innerText = "MISSION TERMINÉE";
+        rSec.classList.remove('hidden');
+        // On s'assure que le contenu n'est pas vide (pour éviter les "...")
+        if (typeof afficherResultats === 'function') {
+            afficherResultats(game);
         }
     }
 }
 
 function calculateFinal(game) {
     let counts = {};
-    Object.values(game.votes).forEach(nom => {
-        counts[nom] = (counts[nom] || 0) + 1;
-    });
-    let sortedVotes = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-    let target = sortedVotes[0] || "";
+    Object.values(game.votes).forEach(nom => counts[nom] = (counts[nom] || 0) + 1);
+    let sorted = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
     let u = game.players.find(p => p.role === "undercover");
+    let h = game.players.find(p => p.role === "hacker");
     let c = game.players.find(p => p.role === "civil");
-    return { win: target === u?.nom, uNom: u ? u.nom : "Inconnu", uWord: u ? u.mot : "?", cWord: c ? c.mot : "?" };
+    return { 
+        win: sorted[0] === u?.nom, 
+        uNom: u ? u.nom : "Inconnu", 
+        hNom: h ? h.nom : "Aucun",
+        uWord: u ? u.mot : "?", 
+        cWord: c ? c.mot : "?" 
+    };
 }
 
-// Musique au premier clic
+function afficherResultats(game) {
+    const rSec = document.getElementById('result-section');
+    rSec.classList.remove('hidden');
+    document.getElementById('turn-indicator').classList.add('hidden');
+    
+    const res = calculateFinal(game);
+    const winMsg = document.getElementById('win-message');
+    winMsg.innerText = res.win ? "SUCCÈS DE L'AGENCE" : "ÉCHEC DE LA MISSION";
+    winMsg.style.color = res.win ? "#4ade80" : "#ef4444";
+
+    document.getElementById('final-reveal').innerHTML = `
+        <div class='bg-white/5 p-8 rounded-[35px] font-black uppercase text-xs border border-white/5'>
+            <p class='opacity-20 mb-2'>L'infiltré était</p>
+            <span class='text-xl tracking-tighter'>${res.uNom}</span><br>
+            <p class='opacity-20 mb-2 mt-4'>Le hacker était</p>
+            <span class='text-xl tracking-tighter'>${res.hNom}</span><br>
+            <p class='opacity-30 mt-4'>${res.uWord} VS ${res.cWord}</p>
+        </div>`;
+
+    const btnReplay = document.getElementById('btn-replay');
+    if(isHost) {
+        btnReplay.classList.remove('hidden');
+        document.getElementById('wait-host-msg').classList.add('hidden');
+    } else {
+        btnReplay.classList.add('hidden');
+        document.getElementById('wait-host-msg').classList.remove('hidden');
+    }
+}
+
+// --- INITIALISATION ---
 document.addEventListener('click', () => { 
     bgMusic.play().catch(() => {}); 
 }, { once: true });
+
+const roleCard = document.getElementById('role-card');
+if (roleCard) {
+    roleCard.onclick = () => {
+        document.getElementById('secret-word').classList.toggle('blur-md');
+        document.getElementById('tap-to-reveal').classList.toggle('hidden');
+    };
+}
+
+socket.on('hacker_init', (data) => {
+    const modal = document.getElementById('hacker-modal');
+    document.getElementById('hacker-target-name').innerText = data.targetName;
+    modal.classList.remove('hidden');
+    document.getElementById('hacker-submit').onclick = () => {
+        const val = document.getElementById('hacker-input').value.trim().toUpperCase();
+        if(val) {
+            socket.emit('set_hacker_word', val);
+            modal.classList.add('hidden');
+        }
+    };
+});
