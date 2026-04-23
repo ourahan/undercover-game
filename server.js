@@ -358,5 +358,5 @@ socket.on('send_clue', (texte) => {
     });
 });
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`Serveur sur port ${PORT}`));
