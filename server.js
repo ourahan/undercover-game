@@ -8,10 +8,11 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // Remplace tes lignes actuelles par celles-ci :
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/index.html');
+    // On précise que le fichier est dans le dossier 'public'
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 let rooms = {};
@@ -36,12 +37,12 @@ const WORDS = [
     ["ADIDAS", "NIKE"], ["TESLA", "FERRARI"], ["SNAPCHAT", "INSTAGRAM"]
 ];
 
-function startRoomTimer(r) {
+function startRoomTimer(r, duration = 60) {
     const game = rooms[r];
     if (!game) return;
     if (roomTimers[r]) clearInterval(roomTimers[r]);
 
-    let timeLeft = 60; 
+    let timeLeft = duration; 
     io.to(r).emit('timer_update', timeLeft);
 
     roomTimers[r] = setInterval(() => {
@@ -49,8 +50,15 @@ function startRoomTimer(r) {
         io.to(r).emit('timer_update', timeLeft);
         if (timeLeft <= 0) {
             clearInterval(roomTimers[r]);
-            if (game.phase.startsWith("indice")) {
+           if (game.phase.startsWith("indice")) {
                 io.to(r).emit('force_clue', "PAS_D_INDICE");
+            } else if (game.phase === "discussion") {
+                // AJOUT ICI : Si le temps du chat est fini
+                game.phase = "vote";
+                game.skipChatVotes = [];
+                // On relance le timer pour les 60s du vote
+                startRoomTimer(r); 
+                io.to(r).emit('update_room', game);
             } else if (game.phase === "vote") {
                 io.to(r).emit('force_vote');
             }
@@ -122,7 +130,11 @@ io.on('connection', (socket) => {
                 options: { enableHacker: false, extraUndercover: false },
                 hackerVictimId: null,
                 hackerTrapWord: "",
-                hackerUsed: false 
+                hackerUsed: false,
+                // --- AJOUTE CES DEUX LIGNES ICI ---
+                discussionMessages: [], 
+                skipChatVotes: []
+                // ----------------------------------
             };
         }
 
@@ -138,7 +150,44 @@ io.on('connection', (socket) => {
 
         io.to(room).emit('update_room', rooms[room]);
     }); // <--- ICI LE JOIN_ROOM EST PROPREMENT FERMÉ
+// --- LOGIQUE DU DÉBAT (CHAT) ---
+    socket.on('send_chat_message', (msg) => {
+        const r = socket.roomName;
+        const game = rooms[r];
+        const p = game?.players.find(pl => pl.id === socket.id);
 
+        if (game && game.phase === 'discussion' && p) {
+            // Sécurité au cas où l'objet n'est pas initialisé
+            if (!game.discussionMessages) game.discussionMessages = [];
+            
+            game.discussionMessages.push({
+                auteur: p.nom,
+                texte: msg.toUpperCase(),
+                color: p.color
+            });
+            io.to(r).emit('update_room', game);
+        }
+    });
+
+    socket.on('vote_skip_chat', () => {
+        const r = socket.roomName;
+        const game = rooms[r];
+
+        if (game && game.phase === 'discussion') {
+            if (!game.skipChatVotes) game.skipChatVotes = [];
+            
+            if (!game.skipChatVotes.includes(socket.id)) {
+                game.skipChatVotes.push(socket.id);
+            }
+
+            // Si tout le monde a cliqué sur "Passer"
+            if (game.skipChatVotes.length >= game.players.length) {
+                game.phase = "vote";
+                if (typeof startRoomTimer === "function") startRoomTimer(r, 60);
+            }
+            io.to(r).emit('update_room', game);
+        }
+    });
     // --- RELANCER LA PARTIE (À PLACER ICI) ---
     socket.on('restart_game', () => {
     const r = socket.roomName;
@@ -200,6 +249,9 @@ io.on('connection', (socket) => {
                     io.to(hacker.id).emit('hacker_init', { targetName: target.nom });
                 }
             }
+            // À mettre juste avant la ligne 204
+game.discussionMessages = []; 
+game.skipChatVotes = [];
             startGame(r);
         } else {
             io.to(r).emit('update_room', game);
@@ -231,51 +283,47 @@ socket.on('send_clue', (texte) => {
     const r = socket.roomName;
     const game = rooms[r];
     
-    // Sécurité : on vérifie que la partie existe et que c'est le tour du bon joueur
     if (!game || game.phase !== "indice") return;
     if (game.turnOrder[game.tour] !== socket.id) return;
 
     const p = game.players.find(pl => pl.id === socket.id);
     let texteFinal = texte;
 
-    // --- LOGIQUE DU HACK (CORRIGÉE POUR 1 SEUL TOUR) ---
-    // On ajoute "game.round === 1" pour être sûr que ça ne marche qu'au début
     if (game.round === 1 && socket.id === game.hackerVictimId && game.hackerTrapWord) {
-        // On remplace le texte du joueur par le mot du hacker
         texteFinal = game.hackerTrapWord;
-        
-        // IMPORTANT : On vide le piège immédiatement pour qu'au Round 2, 
-        // le civil retrouve son vrai mot !
         game.hackerTrapWord = ""; 
-        
-        console.log(`LE HACK A OPÉRÉ : ${p.nom} voulait dire "${texte}" mais a dit "${texteFinal}"`);
+        console.log(`LE HACK A OPÉRÉ : ${p.nom} a dit "${texteFinal}"`);
     }
 
-    // On ajoute l'indice (le vrai ou le hacké) à la liste
     game.clues.push({ 
         auteur: p.nom, 
         texte: texteFinal, 
         color: p.color 
     });
 
-    // Passage au tour suivant
+    // --- LOGIQUE DE PASSAGE ---
     if (game.tour < game.turnOrder.length - 1) {
         game.tour++;
     } else {
-        // Si c'est la fin du tour, on passe au round suivant ou au vote
         if (game.round < 2) {
             game.round++;
             game.tour = 0;
-            // Optionnel : tu peux aussi remettre hackerTrapWord à "" ici par sécurité
         } else {
-            game.phase = "vote";
+            game.phase = "discussion";
+            game.discussionMessages = []; 
+            game.skipChatVotes = [];
+            if (typeof startRoomTimer === "function") startRoomTimer(r, 120);
         }
     }
 
+    // --- CES LIGNES DOIVENT ÊTRE ICI (HORS DU ELSE) ---
+    // On prévient tout le monde que le tour a changé, PEU IMPORTE le tour
     io.to(r).emit('update_room', game);
-    
-    // Relance du timer
-    if (typeof startRoomTimer === "function") startRoomTimer(r);
+
+    // On relance le petit timer pour le joueur suivant (seulement si on est encore en phase indice)
+    if (game.phase === "indice") {
+        if (typeof startRoomTimer === "function") startRoomTimer(r);
+    }
 });
 
    socket.on('vote_player', (targetNom) => {
@@ -336,27 +384,42 @@ socket.on('send_clue', (texte) => {
         // --- ENVOI DES RÉSULTATS ---
         game.phase = "resultats";
         io.to(r).emit('update_room', game);
-    }
-}); // <--- C'est la fin du bloc vote_player
+   } 
+}); // <--- ICI on ferme UNIQUEMENT vote_player
 
-    socket.on('disconnect', () => {
-        const r = socket.roomName;
-        if (!rooms[r]) return;
-        if (socket.id === rooms[r].hostId) {
-            io.to(r).emit('host_left_event');
-            if (roomTimers[r]) clearInterval(roomTimers[r]);
-            delete rooms[r];
-        } else {
-            rooms[r].players = rooms[r].players.filter(p => p.id !== socket.id);
-            if (rooms[r].players.length === 0) {
-                if (roomTimers[r]) clearInterval(roomTimers[r]);
-                delete rooms[r];
+// ON N'UTILISE PAS DE }); ICI CAR ON EST ENCORE DANS io.on('connection')
+
+socket.on('disconnect', () => {
+        Object.keys(rooms).forEach(roomName => {
+            const game = rooms[roomName];
+            if (game.hostId === socket.id) {
+                io.to(roomName).emit('host_left');
+                delete rooms[roomName];
             } else {
-                io.to(r).emit('update_room', rooms[r]);
+                const pIdx = game.players.findIndex(p => p.id === socket.id);
+                if (pIdx !== -1) {
+                    game.players.splice(pIdx, 1);
+                    io.to(roomName).emit('update_room', game);
+                }
             }
-        }
+        });
     });
-});
 
-const PORT = process.env.PORT || 4000;
+}); // <--- CETTE ACCOLADE FERME LE IO.ON('CONNECTION') DEPUIS LE DÉBUT
+function forceVote(roomName) {
+    const game = rooms[roomName];
+    if (game && game.phase === 'discussion') {
+        console.log(`[TIMER] Temps écoulé pour ${roomName}. Passage au vote forcé.`);
+        game.phase = "vote";
+        game.skipChatVotes = []; // On reset pour la suite
+        
+        // On lance le timer de la phase de vote (60s comme dans ton code)
+        if (typeof startRoomTimer === "function") {
+            startRoomTimer(roomName, 60);
+        }
+        
+        io.to(roomName).emit('update_room', game);
+    }
+}
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Serveur sur port ${PORT}`));
