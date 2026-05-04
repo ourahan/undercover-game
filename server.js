@@ -7,10 +7,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Remplace tes lignes actuelles par celles-ci :
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    // Ligne 15 : On envoie l'index qui est à la racine
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 let rooms = {};
