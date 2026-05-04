@@ -7,6 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Special+Elite&display=swap" rel="stylesheet">
     <style>
+        /* Assure-toi que cette animation existe pour que le toast apparaisse */
+@keyframes pop {
+    0% { transform: translate(-50%, -20px) scale(0.9); opacity: 0; }
+    100% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+
+.animate-pop {
+    animation: pop 0.3s ease-out forwards;
+}
+
+/* Sécurité si Tailwind n'est pas chargé */
+.hidden { display: none !important; }
     body {
     background: radial-gradient(circle, #1a2a3a 0%, #050505 100%) !important;
     background-attachment: fixed;
@@ -95,6 +107,17 @@
 </head>
 
 <body class="p-4 flex flex-col items-center min-h-screen bg-[radial-gradient(circle_at_center,#1a1a1a_0%,#050505_100%)]">
+    <!-- SYSTÈME DE NOTIFICATION DESIGN -->
+    <div id="error-toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-[100000] hidden" style="pointer-events: none;">
+        <div class="bg-red-600/20 border-2 border-red-500 backdrop-blur-xl px-8 py-4 rounded-2xl flex items-center gap-4 shadow-[0_0_30px_rgba(239,68,68,0.4)]">
+            <span class="text-2xl animate-pulse">⚠️</span>
+            <div class="flex flex-col text-left">
+                <span class="text-[8px] font-black text-red-500 uppercase tracking-[0.3em] mb-1">Alerte Sécurité</span>
+                <span id="error-toast-text" class="text-white font-bold text-xs uppercase tracking-wider"></span>
+            </div>
+        </div>
+    </div>
+
 
     <div id="screen-host-left" class="hidden fixed inset-0 w-full h-full z-[999999] flex flex-col items-center justify-center text-center px-6" style="backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); pointer-events: all; background: transparent;">
     <div class="glass p-10 rounded-[50px] border border-white/10 shadow-2xl space-y-6 max-w-sm animate-pop flex flex-col items-center">
@@ -109,16 +132,8 @@
     </div>
 </div>
 
-<button onclick="toggleRules()" 
-    style="position: fixed !important; top: 24px !important; left: 24px !important; right: auto !important; z-index: 9999 !important;"
-    class="bg-white/5 hover:bg-white/10 border border-white/10 p-3 rounded-2xl transition-all group">
-    <span class="text-white/40 group-hover:text-cyan-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-        <span style="width: 16px; height: 16px; border: 1px solid currentColor; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px;">i</span>
-        Règles du jeu
-    </span>
-</button>
 
-<div id="rules-modal" class="hidden fixed inset-0 z-[200] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6">
+<div id="rules-modal" class="hidden fixed inset-0 z-[10002] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6">
     <div class="glass border border-white/20 p-8 rounded-[40px] max-w-lg w-full relative animate-pop">
         <button onclick="toggleRules()" class="absolute top-6 right-6 text-white/20 hover:text-white font-black text-xl">✕</button>
 
@@ -144,39 +159,97 @@
         <button onclick="toggleRules()" class="mt-8 w-full bg-white/5 hover:bg-cyan-500 hover:text-black py-4 rounded-2xl text-white font-black uppercase text-xs transition-all border border-white/10">Compris, agent</button>
     </div>
 </div>
-    <button id="btn-mute" class="fixed top-4 right-4 bg-white/10 p-3 rounded-full border border-white/20 z-50 hover:bg-white/20 transition-all">
-        <span id="mute-icon">🔊</span>
-    </button>
+    <button onclick="toggleMenu()" class="fixed top-4 right-4 z-[10000] bg-white/10 backdrop-blur-md p-3 rounded-full border border-white/20 hover:scale-110 transition-all active:scale-95">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+</button>
 
-        <button id="btn-leave-room" class="glass px-5 py-2 rounded-full text-[10px] font-black uppercase text-red-500 border border-red-500/20 hidden">
+<div id="settings-menu" class="hidden fixed inset-0 z-[10001] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+    <div class="glass w-full max-w-xs p-8 rounded-[40px] border border-white/10 flex flex-col gap-4 text-center">
+        <h2 class="text-white/40 text-[10px] font-black uppercase tracking-[0.3em] mb-4">Paramètres</h2>
+
+        <button id="btn-mute-menu" class="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5 hover:bg-white/10">
+            <span class="text-white/60 text-[10px] font-bold uppercase italic">Musique</span>
+            <span id="mute-icon-menu">🔊</span>
+        </button>
+
+        <button onclick="toggleRules(); toggleMenu();" class="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5 hover:bg-white/10">
+            <span class="text-white/60 text-[10px] font-bold uppercase italic">Protocole</span>
+            <span class="text-cyan-400 font-bold">?</span>
+        </button>
+
+        <button id="btn-leave-room" onclick="leaveGame()" class="hidden mt-4 flex items-center justify-center bg-red-500/10 p-4 rounded-2xl border border-red-500/20 text-red-500 text-[10px] font-black uppercase italic hover:bg-red-500 hover:text-white transition-all">
             Quitter la mission
+        </button>
+
+        <button onclick="toggleMenu()" class="mt-6 text-white/20 text-[9px] font-black uppercase tracking-widest hover:text-white transition-colors">Retour</button>
+    </div>
+</div>
+        <div class="flex flex-col items-center w-full mb-8">
+    
+
+    <div id="screen-login" class="space-y-6">
+    <!-- RÉCUPÉRATION DU LOGO ET TITRE (Version Classifiée Corrigée) -->
+    <!-- LOGO CORRIGÉ (PAS DE COUPURE) -->
+<div class="text-center mb-8 pt-4 select-none">
+    <!-- Icône Lunettes (Augmentation de la marge pour ne pas couper) -->
+    <div class="text-5xl opacity-20 mb-4 grayscale contrast-200 leading-none">
+        👓
+    </div>
+
+    <!-- Titre UNDERCOVER (Ajustement du leading pour éviter les coupures) -->
+    <h1 class="text-7xl font-[900] italic leading-[0.9] tracking-tighter uppercase 
+               bg-gradient-to-b from-white via-white to-gray-500 bg-clip-text text-transparent pb-1">
+        Under<br>cover
+    </h1>
+
+    <!-- Sous-titre -->
+    <p class="text-[10px] font-bold text-gray-500 uppercase tracking-[0.4em] mt-4 opacity-60">
+        Dossier Classifié — Surveillance
+    </p>
+</div>
+
+    <!-- CHAMP PSEUDO -->
+    <div id="input-identity" class="space-y-4">
+        <input type="text" id="username" placeholder="VOTRE NOM DE CODE..." 
+               class="w-full bg-white/5 border-2 border-white/10 p-5 rounded-2xl text-white font-black text-center focus:border-cyan-500 transition-all uppercase outline-none shadow-inner">
+    </div>
+
+    <!-- MENU PRINCIPAL -->
+    <div id="menu-selection" class="space-y-4 pt-4">
+        <button onclick="showLibreMenu()" class="group relative w-full bg-cyan-500 text-black p-5 rounded-2xl font-black uppercase overflow-hidden transition-all hover:scale-[1.02] active:scale-95">
+            <span class="relative z-10">Partie Libre</span>
+            <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform"></div>
+        </button>
+        <button onclick="showPriveMenu()" class="w-full bg-white/5 border border-white/10 text-white p-5 rounded-2xl font-black uppercase hover:bg-white/10 transition-all">
+            Partie Privée
         </button>
     </div>
 
-    <div id="screen-login" class="w-full max-w-sm mt-16 space-y-8 animate-pop">
-        <div class="text-center">
-            <div class="block text-4xl mb-4 opacity-40">🕶️</div> 
-            <h1 class="text-6xl font-black italic tracking-tighter uppercase text-gradient leading-none">Under<br>Cover</h1>
-            <p class="text-[9px] font-bold tracking-[0.4em] uppercase opacity-20 mt-3">Dossier Classifié - Surveillance</p>
+    <!-- SOUS-MENUS -->
+    <div id="menu-libre" class="hidden space-y-4 animate-in fade-in slide-in-from-bottom-4">
+        <div class="flex items-center justify-between px-2">
+            <span class="text-[10px] font-bold text-cyan-400 uppercase tracking-widest text-left">Missions Disponibles</span>
+            <span class="flex h-2 w-2 rounded-full bg-cyan-500 animate-pulse"></span>
         </div>
-
-        <div class="glass p-8 rounded-[40px] space-y-4 shadow-2xl">
-            <input id="username" type="text" placeholder="NOM DE CODE" class="w-full p-5 rounded-2xl bg-white/5 border border-white/10 text-center text-xl font-bold outline-none uppercase text-white placeholder:opacity-10">
-            <div class="grid grid-cols-2 gap-3">
-                <button id="mode-create" class="bg-white/5 border border-white/10 py-4 rounded-2xl font-black text-[10px] uppercase">Créer</button>
-                <button id="mode-join" class="bg-white/5 border border-white/10 py-4 rounded-2xl font-black text-[10px] uppercase">Rejoindre</button>
-            </div>
-            <div id="area-create" class="hidden space-y-4 pt-4 border-t border-white/5">
-                <input id="new-roomid" type="text" placeholder="NOM DU SALON" class="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-center font-bold uppercase text-white">
-                <button id="btn-confirm-create" class="w-full bg-white text-black py-5 rounded-full font-black text-xl">OUVRIR SALON</button>
-            </div>
-            <div id="area-join" class="hidden space-y-4 pt-4 border-t border-white/5">
-                <input id="join-roomid" type="text" placeholder="CODE D'ACCÈS" class="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-center font-bold uppercase text-white">
-                <p id="error-msg" class="text-red-500 text-[10px] font-black uppercase mt-2 hidden text-center">Invalide</p>
-                <button id="btn-confirm-join" class="w-full mt-4 bg-white text-black py-5 rounded-full font-black text-xl">REJOINDRE</button>
-            </div>
+        <div id="public-rooms-list" class="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+            <!-- Liste des salons publics -->
         </div>
+        <button onclick="createPublicGame()" class="w-full border-2 border-dashed border-white/20 text-white/60 p-4 rounded-xl font-bold uppercase text-xs hover:border-cyan-500/50 hover:text-cyan-400 transition-all">
+            + Établir une nouvelle liaison
+        </button>
+        <button onclick="backToMenu()" class="w-full text-white/30 text-[10px] uppercase font-black py-2 tracking-[0.2em]">Annuler</button>
     </div>
+
+    <div id="menu-prive" class="hidden space-y-4 animate-in fade-in">
+        <input type="text" id="room-code" placeholder="CODE DE FRÉQUENCE..." 
+               class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white font-bold text-center uppercase focus:border-cyan-500 outline-none">
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="joinGame(true)" class="bg-cyan-500 text-black p-4 rounded-xl font-black text-xs uppercase shadow-lg shadow-cyan-500/20">Créer</button>
+            <button onclick="joinGame(false)" class="bg-white/10 text-white p-4 rounded-xl font-black text-xs uppercase">Rejoindre</button>
+        </div>
+        <button onclick="backToMenu()" class="w-full text-white/30 text-[10px] uppercase font-black py-2 tracking-[0.2em]">Annuler</button>
+    </div>
+</div>
 
     <div id="screen-lobby" class="hidden w-full max-w-sm mt-12 space-y-6 animate-pop">
         <div class="glass p-8 rounded-[40px] text-center shadow-2xl">
@@ -184,21 +257,35 @@
             <div id="display-room" class="text-[10px] font-mono text-cyan-400 font-black uppercase mb-4 bg-cyan-500/10 px-4 py-1 rounded-full border border-cyan-500/20 inline-block">---</div>
             <button id="btn-invite-whatsapp" class="block mx-auto mb-6 text-[10px] text-green-400 font-black uppercase tracking-widest animate-pulse">INVITER VIA WHATSAPP</button>
             <div id="player-list" class="space-y-3 mb-8"></div>
-            <div id="host-controls" class="hidden w-full mb-6 p-4 bg-white/5 rounded-2xl border border-white/10">
+            <!-- Début des contrôles hôte -->
+<div id="host-controls" class="hidden w-full mb-6 p-4 bg-white/5 rounded-2xl border border-white/10">
     <h3 class="text-[10px] font-black tracking-[0.2em] text-cyan-400 uppercase mb-4 text-center italic">Paramètres de Mission</h3>
     
     <div class="space-y-4">
-        <div class="flex items-center justify-between">
+        <!-- Bloc Thème -->
+        <div class="mb-4">
+            <label class="text-[10px] font-black tracking-[0.2em] text-cyan-400 uppercase block mb-2">Secteur d'Opération (Thème)</label>
+            <select id="opt-theme" class="w-full bg-white/5 border border-white/20 p-3 rounded-xl text-white text-xs font-bold outline-none focus:border-cyan-500">
+                <option value="Classique" class="bg-slate-900">CLASSIQUE</option>
+                <option value="Anime" class="bg-slate-900">ANIME / MANGA</option>
+                <option value="Séries & Films" class="bg-slate-900">SÉRIES & FILMS</option>
+                <option value="Jeux Vidéo" class="bg-slate-900">JEUX VIDÉO</option>
+            </select>
+        </div>
+
+        <!-- Bloc Second Undercover -->
+        <div class="flex items-center justify-between mb-4">
             <label class="text-[11px] font-bold text-white/70 uppercase tracking-wider cursor-pointer">Second Undercover</label>
             <input type="checkbox" id="opt-extra-u" class="w-4 h-4 rounded accent-cyan-400 cursor-pointer">
         </div>
 
+        <!-- Bloc Hacker -->
         <div id="hacker-toggle-row" class="flex items-center justify-between opacity-30 transition-opacity">
-            <div class="flex flex-col">
+             <div class="flex flex-col">
                 <label class="text-[11px] font-bold text-purple-400 uppercase tracking-wider">Agent Hacker</label>
                 <span class="text-[8px] text-purple-400/50 font-bold uppercase">(5+ Joueurs)</span>
             </div>
-            <input type="checkbox" id="opt-hacker" disabled class="w-4 h-4 rounded accent-purple-500 cursor-pointer">
+            <input type="checkbox" id="opt-hacker" class="w-4 h-4 rounded accent-purple-500 cursor-pointer">
         </div>
     </div>
 </div>
@@ -233,8 +320,9 @@
             </div>
         </div>
 
-    <button id="btn-open-indices" class="w-full mt-4 mb-4 bg-white/10 border border-white/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all">
+   <button id="btn-open-indices" onclick="ouvrirDossier()" class="w-full mt-4 mb-4 bg-white/10 border border-white/20 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all">
     🔎 Dossier des indices
+</button>
 </button>
 <div id="chat-section" class="hidden fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col p-6 overflow-hidden">
     <div class="text-center mb-4">
@@ -282,35 +370,38 @@
             Relancer une session
         </button>
 
-        <p id="wait-host-msg" class="text-[10px] font-black uppercase opacity-40 py-4 hidden animate-pulse">
-            <span class="inline-block w-2 h-2 bg-cyan-500 rounded-full mr-2"></span> En attente du commandant...
-        </p>
+        <p id="wait-host-msg" class="text-[10px] font-black uppercase opacity-40 py-2 my-2 leading-none hidden animate-pulse text-center w-full flex items-center justify-center">
+    <span class="inline-block w-2 h-2 bg-cyan-500 rounded-full mr-2 shrink-0"></span>
+    <span class="block">En attente du commandant...</span>
+</p>
     </div>
 </div>
 
-    <div id="modal-indices" class="fixed inset-0 z-[100] bg-black/95 hidden flex flex-col p-6 animate-pop">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="font-black italic text-xl uppercase tracking-tighter text-white">Archives de la session</h2>
-            <button id="btn-close-indices" class="bg-white/10 w-10 h-10 rounded-full font-bold text-white text-sm">X</button>
-        </div>
-        <div id="clue-list-full" class="flex-1 overflow-y-auto space-y-3 pr-2"></div>
-        <button id="btn-close-indices-bottom" class="mt-6 w-full bg-white text-black py-4 rounded-full font-black uppercase text-sm">Retour à l'interrogatoire</button>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
-</body>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="script.js"></script>
+    <!-- MODALE HACKER (Garde-la ici) -->
     <div id="hacker-modal" class="hidden fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-4">
-    <div class="glass p-8 rounded-[30px] border-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)] max-w-md w-full text-center animate-pop">
-        <h2 class="text-green-500 font-black text-3xl italic tracking-tighter mb-4">SYSTÈME INFILTRÉ</h2>
-        <p class="text-white mb-6 font-bold">Cible identifiée : <span id="hacker-target-name" class="text-cyan-400"></span></p>
-        <p class="text-sm text-gray-400 mb-4 italic">Quel mot doit-il envoyer à sa place ?</p>
-        <input type="text" id="hacker-input" class="w-full bg-black border-b-2 border-green-500 p-3 text-white text-center outline-none mb-6 uppercase" placeholder="TAPEZ LE MOT ICI...">
-        <button id="hacker-submit" class="w-full bg-green-500 text-black py-4 rounded-full font-black text-xl hover:bg-green-400 transition-all">ACTIVER LE VIRUS</button>
+        <div class="glass p-8 rounded-[30px] border-2 border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.5)] max-w-md w-full text-center animate-pop">
+            <h2 class="text-green-500 font-black text-3xl italic tracking-tighter mb-4">SYSTÈME INFILTRÉ</h2>
+            <p class="text-white mb-6 font-bold">Cible identifiée : <span id="hacker-target-name" class="text-cyan-400"></span></p>
+            <p class="text-sm text-gray-400 mb-4 italic">Quel mot doit-il envoyer à sa place ?</p>
+            <input type="text" id="hacker-input" class="w-full bg-black border-b-2 border-green-500 p-3 text-white text-center outline-none mb-6 uppercase" placeholder="TAPEZ LE MOT ICI...">
+            <button id="hacker-submit" class="w-full bg-green-500 text-black py-4 rounded-full font-black text-xl hover:bg-green-400 transition-all">ACTIVER LE VIRUS</button>
+        </div>
     </div>
+<!-- MODALE DOSSIER DES INDICES -->
+<div id="modal-indices" class="hidden fixed inset-0 z-[10005] bg-slate-900/95 backdrop-blur-2xl flex flex-col p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-cyan-400 font-black text-2xl uppercase italic">Dossier Classifié</h2>
+        <button onclick="fermerDossier()" class="text-white/40 hover:text-white font-black text-xl">✕</button>
+    </div>
+    
+    <div id="clue-list-full" class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+        <!-- Les indices seront copiés ici par le script -->
+    </div>
+
+    <button onclick="fermerDossier()" class="mt-6 w-full bg-white/5 border border-white/10 py-4 rounded-2xl text-white/60 font-black uppercase text-xs">Fermer le dossier</button>
 </div>
+    <!-- SCRIPTS UNIQUES -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

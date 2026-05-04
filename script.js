@@ -1,7 +1,27 @@
 const socket = io();
 let monPseudo = "", isHost = false;
 let isMuted = localStorage.getItem('gameMuted') === 'true'; // On récupère la mémoire
+// --- SYSTÈME DE NOTIFICATION (À COLLER ICI) ---
+function showNotification(message) {
+    const toast = document.getElementById('error-toast');
+    const text = document.getElementById('error-toast-text');
+    
+    if (toast && text) {
+        text.innerText = message;
+        
+        // On force l'affichage sans aucune animation CSS
+        toast.classList.remove('hidden');
+        toast.style.display = 'block'; 
+        toast.style.opacity = '1';
 
+        console.log("FORCE DISPLAY : " + message);
+
+        setTimeout(() => {
+            toast.style.display = 'none';
+            toast.classList.add('hidden');
+        }, 4000);
+    }
+}
 // --- AUDIO ---
 window.bgMusic = new Audio('music.mp3'); 
 window.bgMusic.loop = true; 
@@ -16,37 +36,6 @@ function playClick() {
     s.play().catch(() => {}); 
 }
 
-// --- NAVIGATION & LOGIN ---
-document.getElementById('mode-create').onclick = () => { 
-    playClick(); 
-    document.getElementById('area-create').classList.toggle('hidden'); 
-    document.getElementById('area-join').classList.add('hidden'); 
-};
-
-document.getElementById('mode-join').onclick = () => { 
-    playClick(); 
-    document.getElementById('area-join').classList.toggle('hidden'); 
-    document.getElementById('area-create').classList.add('hidden'); 
-};
-
-document.getElementById('btn-confirm-create').onclick = () => {
-    playClick();
-    monPseudo = document.getElementById('username').value.trim().toUpperCase();
-    const room = document.getElementById('new-roomid').value.trim().toUpperCase();
-    if(monPseudo && room) { 
-        isHost = true; 
-        socket.emit('join_room', { room, username: monPseudo, isCreating: true }); 
-    }
-};
-
-document.getElementById('btn-confirm-join').onclick = () => {
-    playClick();
-    monPseudo = document.getElementById('username').value.trim().toUpperCase();
-    const room = document.getElementById('join-roomid').value.trim().toUpperCase();
-    if(monPseudo && room) { 
-        socket.emit('join_room', { room, username: monPseudo, isCreating: false }); 
-    }
-};
 
 document.getElementById('btn-leave-room').onclick = () => { 
     playClick(); 
@@ -69,9 +58,11 @@ document.getElementById('btn-replay').onclick = () => {
 document.getElementById('btn-ready').onclick = () => { 
     playClick(); 
     if (isHost) {
+        // On récupère les valeurs choisies par l'hôte
         const options = {
             extraUndercover: document.getElementById('opt-extra-u').checked,
-            enableHacker: document.getElementById('opt-hacker').checked
+            enableHacker: document.getElementById('opt-hacker').checked,
+            theme: document.getElementById('opt-theme').value // C'est ici qu'on récupère le thème !
         };
         socket.emit('set_ready', options); 
     } else {
@@ -162,10 +153,7 @@ socket.on('timer_update', (time) => {
 });
 
 socket.on('error_msg', (msg) => {
-    const el = document.getElementById('error-msg'); 
-    el.innerText = msg; 
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 3000);
+    showNotification(msg); // Plus d'alert(), affiche le bandeau rouge
 });
 
 socket.on('update_room', (game) => {
@@ -498,32 +486,36 @@ function playSfx(id) {
     }
 }
 window.addEventListener('load', () => {
-    const btnMute = document.getElementById('btn-mute');
+    // ON CHERCHE LE NOUVEAU BOUTON DU MENU
+    const btnMute = document.getElementById('btn-mute-menu');
+    const icon = document.getElementById('mute-icon-menu');
+
     if (btnMute) {
-        // Apparence initiale du bouton selon la mémoire
-        const icon = document.getElementById('mute-icon');
+        // Apparence initiale selon le localStorage (isMuted est déjà défini ailleurs)
         if (icon) icon.innerText = isMuted ? "🔇" : "🔊";
         btnMute.style.opacity = isMuted ? "0.5" : "1";
 
         btnMute.addEventListener('click', () => {
             isMuted = !isMuted;
-            localStorage.setItem('gameMuted', isMuted); // ON ENREGISTRE LE CHOIX ICI
+            localStorage.setItem('gameMuted', isMuted);
 
+            // Mise à jour visuelle dans le menu
             if (icon) icon.innerText = isMuted ? "🔇" : "🔊";
             btnMute.style.opacity = isMuted ? "0.5" : "1";
 
+            // Gestion de la musique
             if (window.bgMusic) {
                 window.bgMusic.muted = isMuted;
                 window.bgMusic.volume = isMuted ? 0 : 0.2;
                 if (!isMuted) window.bgMusic.play().catch(() => {});
             }
             
-            if (dropSfx) dropSfx.muted = isMuted;
+            if (window.dropSfx) window.dropSfx.muted = isMuted;
             
-            // Protection pour les autres sons
+            // Protection globale pour tous les médias
             document.querySelectorAll('audio, video').forEach(m => {
                 m.muted = isMuted;
-                m.volume = isMuted ? 0 : 1;
+                m.volume = isMuted ? 0 : (m.classList.contains('bg-music') ? 0.2 : 1);
             });
         });
     }
@@ -560,3 +552,120 @@ function toggleRules() {
         modal.classList.toggle('hidden');
     }
 }
+function toggleMenu() {
+    const menu = document.getElementById('settings-menu');
+    // Si le menu est affiché, on le cache. S'il est caché, on l'affiche.
+    if (menu.classList.contains('hidden')) {
+        menu.classList.remove('hidden');
+    } else {
+        menu.classList.add('hidden');
+    }
+}
+// --- NAVIGATION DU MENU PRINCIPAL ---
+
+function showLibreMenu() {
+    const pseudo = document.getElementById('username').value.trim();
+    if (!pseudo) return showNotification("AGENT, IDENTIFIEZ-VOUS !");
+    
+    monPseudo = pseudo.toUpperCase();
+    document.getElementById('menu-selection').classList.add('hidden');
+    document.getElementById('menu-libre').classList.remove('hidden');
+    socket.emit('get_public_rooms');
+}
+
+function showPriveMenu() {
+    const pseudo = document.getElementById('username').value.trim();
+    if (!pseudo) return showNotification("AGENT, IDENTIFIEZ-VOUS !");
+    
+    monPseudo = pseudo.toUpperCase();
+    document.getElementById('menu-selection').classList.add('hidden');
+    document.getElementById('menu-prive').classList.remove('hidden');
+}
+
+function joinGame(isCreating) {
+    const roomCodeInput = document.getElementById('room-code');
+    // Sécurité : on vérifie que l'élément existe bien avant de lire sa valeur
+    if (!roomCodeInput) return; 
+
+    const roomCode = roomCodeInput.value.trim().toUpperCase();
+    
+    // 1. On remplace l'alerte du code de salon
+    if (!roomCode) {
+        showNotification("ENTREZ UN CODE DE FRÉQUENCE !");
+        return;
+    }
+
+    // 2. On remplace l'alerte du pseudo manquant
+    if (!monPseudo) {
+        showNotification("NOM DE CODE MANQUANT. RÉESAYEZ.");
+        backToMenu();
+        return;
+    }
+
+    // On définit si on est l'hôte pour afficher les réglages plus tard
+    isHost = isCreating; 
+    
+    playClick(); // Lance le son du clic[cite: 4]
+
+    // On envoie les infos au serveur avec le mode privé[cite: 5]
+    socket.emit('join_room', { 
+        room: roomCode, 
+        username: monPseudo, 
+        isCreating: isCreating,
+        isPrivateMode: true 
+    });
+}
+
+function backToMenu() {
+    document.getElementById('menu-libre').classList.add('hidden');
+    document.getElementById('menu-prive').classList.add('hidden');
+    document.getElementById('menu-selection').classList.remove('hidden');
+}
+
+// --- LOGIQUE DES PARTIES PUBLIQUES ---
+
+function createPublicGame() {
+    const room = "PUB-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    // TRÈS IMPORTANT : Dis au script que tu es l'hôte !
+    isHost = true; 
+    
+    socket.emit('join_room', { 
+        room, 
+        username: monPseudo, 
+        isCreating: true, 
+        isPrivateMode: false // C'est une partie libre
+    });
+}
+
+function joinPublicRoom(roomName) {
+    if (!monPseudo) return alert("Erreur de pseudo.");
+    socket.emit('join_room', { room: roomName, username: monPseudo, isCreating: false });
+}
+
+// RÉCEPTION DE LA LISTE DES SALONS
+socket.on('list_rooms', (rooms) => {
+    // ATTENTION : L'ID doit être le même que dans ton HTML (public-rooms-list)
+    const listContainer = document.getElementById('public-rooms-list');
+    if(!listContainer) return;
+
+    if (rooms.length === 0) {
+        listContainer.innerHTML = '<p class="text-white/20 text-center uppercase text-[10px] p-4">Aucun salon public trouvé</p>';
+        return;
+    }
+
+    listContainer.innerHTML = rooms.map(room => `
+        <div onclick="joinPublicRoom('${room.name}')" class="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl cursor-pointer hover:border-cyan-500/50 transition-all mb-2">
+            <span class="text-cyan-400 font-black">${room.name}</span>
+            <span class="text-xs text-white/50">${room.count}/8 JOUEURS</span>
+        </div>
+    `).join('');
+});
+// Ajoute le son à tous les boutons existants et futurs
+document.querySelectorAll('button').forEach(button => {
+    button.addEventListener('click', () => {
+        if (typeof playClick === 'function') {
+            playClick(); // Remplace par le nom exact de ta fonction de son
+        }
+    });
+});
