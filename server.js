@@ -7,12 +7,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Remplace tes lignes actuelles par celles-ci :
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    // Ligne 15 : On envoie l'index qui est à la racine
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 let rooms = {};
@@ -27,12 +25,20 @@ const THEMES = {
         ["HIVER", "AUTOMNE"], ["MÉRO", "BUS"], ["PARAPLUIE", "IMPERMÉABLE"], ["CAUR", "POUMON"]
     ],
     "Anime": [
-        ["NARUTO", "SASUKE"], ["LUFFY", "ZORO"], ["SANGOKU", "VEGETA"], ["PIKACHU", "RAICHU"],
-        ["DEATH NOTE", "CODE GEASS"], ["DBZ", "NARUTO"], ["TANJIRO", "NEZUKO"], ["SAITAMA", "GENOS"],
-        ["GON", "KILLUA"], ["KIRITO", "ASUNA"], ["SHINGEKI", "DEATH NOTE"], ["NAGATO", "PAIN"],
-        ["ICHIGO", "RENYI"], ["JUTSU", "GENJUTSU"], ["SHARINGAN", "BYAKUGAN"], ["KUNAI", "SHURIKEN"],
-        ["CHIDORI", "RASENGAN"], ["ONE PIECE", "FAIRY TAIL"], ["GOKU", "BROLY"], ["MHA", "BLACK CLOVER"]
-    ],
+    ["NARUTO", "SANGOKU"], ["LUFFY", "PIKACHU"], ["SASUKE", "VEGETA"], ["ZORO", "LEVI ACKERMAN"],
+    ["SAITAMA", "GON"], ["TANJIRO", "NATSU"], ["ICHIGO", "EREN JAGER"], ["KIRITO", "MELIODAS"],
+    ["SHARK (YU-GI-OH)", "ASH (POKEMON)"], ["DORAEMON", "CHOPPER"], ["SAKURA", "NAMI"], ["HINATA", "MIKASA"],
+    ["ITACHI", "HISOKA"], ["CELL", "SUKUNA"], ["FRIEZA", "OROCHIMARU"], ["MADARA", "AIZEN"],
+    ["GOJO SATORU", "ALL MIGHT"], ["KAKASHI", "JIRAIYA"], ["GAARA", "GAROU"], ["KILLUA", "BAKUGO"],
+    ["TRUNKS", "EDWARD ELRIC"], ["SOMA (FOOD WARS)", "SANJI"], ["L (DEATH NOTE)", "CONAN"], ["RYUK", "POCHITA"],
+    ["LIGHT YAGAMI", "LELOUCH"], ["BROLY", "GUMGUM (LUFFY)"], ["SHARINGAN", "DRAGON BALL"], ["KUNAI", "SABRE LASER"],
+    ["KAMEHAMEHA", "RASENGAN"], ["VILLAGE DE KONOHA", "GRAND LINE"], ["SHINIGAMI", "SAIYAN"], ["NINJA", "PIRATE"],
+    ["PICCOLO", "SUIREI"], ["MAJIN BUU", "KORO-SENSEI"], ["SHOTO TODOROKI", "GRAY FULLBUSTER"], ["NEJI", "BYAKUYA"],
+    ["SABO", "PORTGAS D. ACE"], ["YAMI YUGI", "KAIBA"], ["ASH KETCHUM", "TAI (DIGIMON)"], ["BULMA", "WINRY"],
+    ["ERZA SCARLET", "SABER"], ["JOTARO", "KENSHIRO"], ["IPPO", "ROCK LEE"], ["MUGEN", "SPIKE SPIEGEL"],
+    ["CELL", "MERUEM"], ["FRIEREN", "ASUNA"], ["REMV", "RAM"], ["BROOK", "LORD DEATH"],
+    ["BOA HANCOCK", "MITSURI"], ["MUZAN", "DIO BRANDO"]
+],
     "Séries & Films": [
         ["GAME OF THRONES", "WITCHER"], ["STRANGER THINGS", "DARK"], ["LA CASA DE PAPEL", "PRISON BREAK"],
         ["MARVEL", "DC COMICS"], ["SQUID GAME", "ALICE IN BORDERLAND"], ["BATMAN", "SUPERMAN"],
